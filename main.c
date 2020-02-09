@@ -362,12 +362,19 @@ void controller(){
 
 void steerControl(unsigned int position){
     // Ezekkel a beállításokkal: position \in [0, 17]
+    // 20ms-es kitöltés kell
+    // 1.5ms a 90° (esetemben az előre)
+
+    // Jelenleg a timer interrupt 0.03125 ms-enként jön 
+    // A 20ms-es ciklusidőhöz 640 meghívásra van szükség
+    // Az 1.5ms (tehát a középtáv) 48
+    // A szerbó pontos pozíciójához tesztelni kell
+
     
     static unsigned int cycleCounter = 0;
-    const unsigned int maxTime = 2000*2; // Ekkora szünet kell két impulzus között. (20ms)
+    const unsigned int maxTime = 640; // Ekkora szünet kell két impulzus között. (20ms)
 
-    const unsigned int mostRight = 48*2;
-    //const unsigned int mostLeftMs = 27;
+    const unsigned int mostRight = 48;
     const unsigned int upTime = mostRight + position;
 
     if (cycleCounter < upTime){
@@ -418,7 +425,7 @@ void driverTimerEvent(){
 
 void driver(){
     initBoard(ENABLE_BUTTON_INTERRUPT | ENABLE_SERIAL_PORT | ENABLE_CC1101);
-    initTimerB(250, 1);
+    initTimerB(500, 1);
     setOutputLow(&FORWARD);
     __enable_interrupt();
 
@@ -453,7 +460,7 @@ void driver(){
             timerBFlag = 0;
         }
 
-        if (sendAnswer && (timerBCounter>=2000)){
+        if (sendAnswer && (timerBCounter>=1000)){
             char message[30];
             message[0] = 20;
             Car_createDriverMessage(&car, message+1);
