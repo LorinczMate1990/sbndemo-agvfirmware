@@ -1,0 +1,7 @@
+bin
+objects
+precompiled
+.svn
+.vscode
+core
+.gdbinit
