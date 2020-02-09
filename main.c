@@ -212,7 +212,7 @@ void separateKeyValuePair(char* source, char* key, char* value, char limiter){
 
 void controller(){
     initBoard(ENABLE_BUTTON_INTERRUPT | ENABLE_SERIAL_PORT | ENABLE_CC1101);
-    initTimerB(1000, 0);
+    initTimerB(500, 0);
     __enable_interrupt();
 
     //RingBuffer_putString(&txUartBuffer, "Controller program started\n\r\n\r");
@@ -364,9 +364,9 @@ void steerControl(unsigned int position){
     // Ezekkel a beállításokkal: position \in [0, 17]
     
     static unsigned int cycleCounter = 0;
-    const unsigned int maxTime = 2000; // Ekkora szünet kell két impulzus között. (20ms)
+    const unsigned int maxTime = 2000*2; // Ekkora szünet kell két impulzus között. (20ms)
 
-    const unsigned int mostRight = 48;
+    const unsigned int mostRight = 48*2;
     //const unsigned int mostLeftMs = 27;
     const unsigned int upTime = mostRight + position;
 
@@ -418,7 +418,7 @@ void driverTimerEvent(){
 
 void driver(){
     initBoard(ENABLE_BUTTON_INTERRUPT | ENABLE_SERIAL_PORT | ENABLE_CC1101);
-    initTimerB(500, 1);
+    initTimerB(250, 1);
     setOutputLow(&FORWARD);
     __enable_interrupt();
 
@@ -453,7 +453,7 @@ void driver(){
             timerBFlag = 0;
         }
 
-        if (sendAnswer && (timerBCounter>=1000)){
+        if (sendAnswer && (timerBCounter>=2000)){
             char message[30];
             message[0] = 20;
             Car_createDriverMessage(&car, message+1);

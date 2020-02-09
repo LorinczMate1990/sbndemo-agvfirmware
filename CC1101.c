@@ -179,7 +179,7 @@ void writeRFSettings(){
 }
 */
 
-void writeRFSettings(){
+/*void writeRFSettings(){
     // Write register settings
     writeRFReg(TI_CC_REG_IOCFG2, 0x0B);   // GDO2 output pin config.    
     writeRFReg(TI_CC_REG_IOCFG0, 0x06);   // GDO0 output pin config.
@@ -206,7 +206,7 @@ void writeRFSettings(){
         ha beragad a buffer-be.
         A csomagküldések minőségét viszont ezen keresztül lehetne növelni, hogy ha a CCA vizsga elbukik, ne is menjen ki a csomag.
         (Szerintem az ACK-ra várakozás jobb módszer)
-        */     
+        * /     
     writeRFReg(TI_CC_REG_MCSM0, 0x18);    // MainRadio Cntrl State Machine.
     writeRFReg(TI_CC_REG_FOCCFG, 0x1D);   // Freq Offset Compens. Config
     writeRFReg(TI_CC_REG_BSCFG, 0x1C);    // Bit Synchronization Configuration
@@ -219,4 +219,101 @@ void writeRFSettings(){
     writeRFReg(TI_CC_REG_FSCAL1, 0x00);   // Frequency Synthesizer Calibration
     writeRFReg(TI_CC_REG_FSCAL0, 0x1F);   // Frequency Synthesizer Calibration
     writeRFReg(TI_CC_REG_TEST0, 0x09);    // Various test settings.
+}*/
+
+/*void writeRFSettings(){
+    // 1.2 kBaud, Optimized for sensitivity
+    // Write register settings
+    writeRFReg(TI_CC_REG_IOCFG2, 0x0B);   // GDO2 output pin config.    
+    writeRFReg(TI_CC_REG_IOCFG0, 0x06);   // GDO0 output pin config.
+    writeRFReg(TI_CC_REG_PKTLEN, 0x30);   // Packet length.
+    writeRFReg(TI_CC_REG_PKTCTRL0, 0x05); // Packet automation control.
+    writeRFReg(TI_CC_REG_ADDR, 0x01);     // Device address.
+    writeRFReg(TI_CC_REG_FSCTRL1, 0x06);
+    writeRFReg(TI_CC_REG_FREQ2, 0x21);
+    writeRFReg(TI_CC_REG_FREQ1, 0x62);
+    writeRFReg(TI_CC_REG_FREQ0, 0x76);
+    writeRFReg(TI_CC_REG_MDMCFG4, 0xF5);
+    writeRFReg(TI_CC_REG_MDMCFG3, 0x83);
+    writeRFReg(TI_CC_REG_MDMCFG2, 0x13);
+    writeRFReg(TI_CC_REG_DEVIATN, 0x15);
+    writeRFReg(TI_CC_REG_MCSM1, 0x0F); //MainRadio Cntrl State  Machine     
+        /*
+        Az MCSM1 5:4 mezője a CCA_MODE-ot adja meg.
+        Ha ez nem 00, akkor a TXR strobe hatására nem biztos, hogy a rádiómodul küldő üzemmódba vált, csak akkor, 
+        ha az adatlab 81. oldalán a feltételek teljesülnek.
+        00 esetén mindig megpróbálja elküldeni a csomagot.
+        Nekem most ez a módszer a legegyszerűbb, mert az nem baj, ha nem érkezik meg a csomag, az viszont igen,
+        ha beragad a buffer-be.
+        A csomagküldések minőségét viszont ezen keresztül lehetne növelni, hogy ha a CCA vizsga elbukik, ne is menjen ki a csomag.
+        (Szerintem az ACK-ra várakozás jobb módszer)
+        * /     
+    writeRFReg(TI_CC_REG_MCSM0, 0x18);    // MainRadio Cntrl State Machine.
+    writeRFReg(TI_CC_REG_FOCCFG, 0x16);   // Freq Offset Compens. Config ///////
+    writeRFReg(TI_CC_REG_BSCFG, 0x1C);    // Bit Synchronization Configuration
+    writeRFReg(TI_CC_REG_AGCCTRL2, 0xC7); // AGC Control
+    writeRFReg(TI_CC_REG_AGCCTRL1, 0x00); // AGC Control
+    writeRFReg(TI_CC_REG_AGCCTRL0, 0xB0); // AGC Control 
+    writeRFReg(TI_CC_REG_FREND1, 0xB6);   // Front End RX Configuration
+
+    writeRFReg(TI_CC_REG_FSCAL3, 0xE9);
+    writeRFReg(TI_CC_REG_FSCAL2, 0x2A);
+    writeRFReg(TI_CC_REG_FSCAL1, 0x00);
+    writeRFReg(TI_CC_REG_FSCAL0, 0x1F);
+    writeRFReg(TI_CC_REG_TEST2, 0x81);
+    writeRFReg(TI_CC_REG_TEST1, 0x35);
+    writeRFReg(TI_CC_REG_TEST0, 0x09);
+}*/
+
+
+void writeRFSettings(){
+    // 1.2 kBaud, Optimized for sensitivity
+    // Write register settings
+    writeRFReg(TI_CC_REG_IOCFG2, 0x0B);   // GDO2 output pin config.    
+    writeRFReg(TI_CC_REG_IOCFG0, 0x06);   // GDO0 output pin config.
+    writeRFReg(TI_CC_REG_PKTLEN, 0x30);   // Packet length.
+    writeRFReg(TI_CC_REG_PKTCTRL0, 0x05); // Packet automation control.
+    writeRFReg(TI_CC_REG_ADDR, 0x01);     // Device address.
+    writeRFReg(TI_CC_REG_MCSM1, 0x0F); //MainRadio Cntrl State  Machine     
+        /*
+        Az MCSM1 5:4 mezője a CCA_MODE-ot adja meg.
+        Ha ez nem 00, akkor a TXR strobe hatására nem biztos, hogy a rádiómodul küldő üzemmódba vált, csak akkor, 
+        ha az adatlab 81. oldalán a feltételek teljesülnek.
+        00 esetén mindig megpróbálja elküldeni a csomagot.
+        Nekem most ez a módszer a legegyszerűbb, mert az nem baj, ha nem érkezik meg a csomag, az viszont igen,
+        ha beragad a buffer-be.
+        A csomagküldések minőségét viszont ezen keresztül lehetne növelni, hogy ha a CCA vizsga elbukik, ne is menjen ki a csomag.
+        (Szerintem az ACK-ra várakozás jobb módszer)
+        */     
+    writeRFReg(TI_CC_REG_MCSM0, 0x18);    // MainRadio Cntrl State Machine.
+    writeRFReg(TI_CC_REG_BSCFG, 0x1C);    // Bit Synchronization Configuration 
+
+    // Smart RF studio
+
+    writeRFReg(TI_CC_REG_FIFOTHR, 0x47);
+    writeRFReg(TI_CC_REG_FSCTRL1, 0x06);
+    writeRFReg(TI_CC_REG_FREQ2, 0x21);
+    writeRFReg(TI_CC_REG_FREQ1, 0x62);
+    writeRFReg(TI_CC_REG_FREQ0, 0x76);
+    writeRFReg(TI_CC_REG_MDMCFG4, 0xC8);
+    writeRFReg(TI_CC_REG_MDMCFG3, 0x93);
+    writeRFReg(TI_CC_REG_MDMCFG2, 0x1B);
+    writeRFReg(TI_CC_REG_DEVIATN, 0x34);
+    writeRFReg(TI_CC_REG_FOCCFG, 0x16);
+    writeRFReg(TI_CC_REG_AGCCTRL2, 0x43);
+    writeRFReg(TI_CC_REG_WORCTRL, 0xFB);
+    writeRFReg(TI_CC_REG_FREND0, 0x17);
+    writeRFReg(TI_CC_REG_FSCAL3, 0xE9);
+    writeRFReg(TI_CC_REG_FSCAL2, 0x2A);
+    writeRFReg(TI_CC_REG_FSCAL1, 0x00);
+    writeRFReg(TI_CC_REG_FSCAL0, 0x1F);
+    writeRFReg(TI_CC_REG_TEST2, 0x81);
+    writeRFReg(TI_CC_REG_TEST1, 0x35);
+    writeRFReg(TI_CC_REG_TEST0, 0x09);
 }
+
+    
+    
+
+    
+    
