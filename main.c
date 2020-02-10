@@ -15,17 +15,21 @@ volatile char sendingInProgress = 0;
 unsigned short a2usFixpoint(char* str, char fixpoint){
     unsigned short ret = 0;
     char gotDecimalPoint = 0;
-    while ((*str) && fixpoint>=0){
+    while ((*str) && fixpoint > 0){
         if ((*str) == '.'){
             gotDecimalPoint = 1;
         } else {
             ret *= 10;
             ret += (*str)-'0';
-        }
-        if (gotDecimalPoint) {
-            fixpoint--;
+            if (gotDecimalPoint) {
+                fixpoint--;
+            }
         }
         str++;
+    }
+    while (fixpoint > 0){
+        ret *= 10;
+        fixpoint--;
     }
     return ret;
 }
@@ -149,38 +153,25 @@ float Car_getMotorSignal(Car *car){
     }
 }
 
-void Car_udpateByControllerMessage(Car *car, unsigned char *message){
-    car->speedRef = message[1]*256 + message[2];
-    car->steerRef = message[3]*256 + message[4];
+void Car_updateWeights(Car *car){
+    Car recovery = *car;
+    float originalMotorSignal;
+    float newMotorSignal;
 
-    if (message[0]){
-        RingBuffer_putChar(&txUartBuffer, 'l');
-        Car recovery = *car;
-        float originalMotorSignal;
-        float newMotorSignal;
-
-
-        car->speed = message[5]*256 + message[6];
-        if (USE_NEURON_NOT_PID){
-            originalMotorSignal = Car_getMotorSignalAsNeuron(car);
-            Car_udpateByControllerMessageAsNeuron(car);
-            newMotorSignal = Car_getMotorSignalAsNeuron(car);
-        } else {
-            originalMotorSignal = Car_getMotorSignalAsPID(car);
-            Car_udpateByControllerMessageAsPID(car);
-            newMotorSignal = Car_getMotorSignalAsPID(car);
-        }
-        
-        if ((originalMotorSignal > 1 && newMotorSignal > originalMotorSignal) || 
-            (originalMotorSignal < 0 && newMotorSignal < originalMotorSignal)){
-            *car = recovery;
-            RingBuffer_putChar(&txUartBuffer, 'd');
-        }
-
-        char buf[50];
-        RingBuffer_putString(&txUartBuffer, "State: ");
-        sprintf(buf, "out: %d, outnew: %d, speed: %d, ref: %d", (int)(originalMotorSignal*1000), (int)(newMotorSignal*1000), car->speed, car->speedRef);
-        RingBuffer_putString(&txUartBuffer, buf);
+    if (USE_NEURON_NOT_PID){
+        originalMotorSignal = Car_getMotorSignalAsNeuron(car);
+        Car_udpateByControllerMessageAsNeuron(car);
+        newMotorSignal = Car_getMotorSignalAsNeuron(car);
+    } else {
+        originalMotorSignal = Car_getMotorSignalAsPID(car);
+        Car_udpateByControllerMessageAsPID(car);
+        newMotorSignal = Car_getMotorSignalAsPID(car);
+    }
+    
+    if ((originalMotorSignal > 1 && newMotorSignal > originalMotorSignal) || 
+        (originalMotorSignal < 0 && newMotorSignal < originalMotorSignal)){
+        *car = recovery;
+        RingBuffer_putChar(&txUartBuffer, 'd');
     }
 }
 
@@ -232,55 +223,6 @@ void controller(){
     unsigned char speedIsSent = 0;
     TIMER_ON;
     while (1){
-        if (RingBuffer_getCharPos(&rxUartBuffer, ',') < rxUartBuffer.bufferSize){
-            char key[50];
-            char value[50];
-            char buffer[50];
-            unsigned int len;
-            
-            len = RingBuffer_getContent(&rxUartBuffer, buffer, 50);
-            buffer[len-1] = 0;
-            separateKeyValuePair(buffer, key, value, ':');
-
-            if (VERBOSE > 0){
-                RingBuffer_putString(&txUartBuffer, "Key: |");
-                RingBuffer_putString(&txUartBuffer, key);
-                RingBuffer_putString(&txUartBuffer, "|      ");
-                RingBuffer_putString(&txUartBuffer, "Value: |");
-                RingBuffer_putString(&txUartBuffer, value);
-                RingBuffer_putString(&txUartBuffer, "|\n\r");            
-            }
-
-            if (!strcmp(key, "setspeedref")){
-                car.speedRef = atoi(value)*1000;
-            } else if (!strcmp(key, "setspeed")) {
-                car.speed = a2usFixpoint(value, 3);
-                speedIsFresh = 1;
-                speedIsSent = 0;
-            } else if (!strcmp(key, "setsteer")) {
-                car.steerRef = atoi(value);
-            } else if (!strcmp(key, "getweights")) {
-                if (USE_NEURON_NOT_PID){
-                    // float ret = car->biasWeight * error + car->speedWeight * car->intError; 
-                    sprintf(buffer, "%d,%d,%d,%d,%d\n\r", (int)(1000*car.biasWeight), 
-                                                        (int)(1000*car.leftSteerWeight), 
-                                                        (int)(1000*car.rightSteerWeight), 
-                                                        (int)(1000*car.speedWeight),
-                                                        (int)(1000*car.speedRefWeight));
-                } else {
-                    sprintf(buffer, "%d,%d\n\r", (int)(1000*car.biasWeight), 
-                                                        (int)(1000*car.speedWeight));
-                }
-                RingBuffer_putString(&txUartBuffer, buffer);
-            } else if (!strcmp(key, "getlabel")) {
-                if (USE_NEURON_NOT_PID){
-                    sprintf(buffer, "bias,leftSteer,rightSteer,speed,speedRef\n\r");
-                } else {
-                    sprintf(buffer, "P,I\n\r");
-                }
-                RingBuffer_putString(&txUartBuffer, buffer);
-            }
-        }
 
         if (buttonPressed){
             buttonPressed = 0;
@@ -431,7 +373,7 @@ void driver(){
 
     RingBuffer_putString(&txUartBuffer, "Car program started\n\r\n\r");
 
-    initCC1101(); // Ehhez kellenek megszakítások
+    //initCC1101(); // Ehhez kellenek megszakítások
     RingBuffer_putString(&txUartBuffer, "initCC1101 finished\n\r\n\r");
 
     setOutputLow(&SERVO_CONTROL);
@@ -439,7 +381,7 @@ void driver(){
     setOutputLow(&GREEN_LED);
     setOutputLow(&RED_LED);
     
-    enableRisingEdgeInterrupt(&CC1101_GD0); // Azelőtt ezt nem engedélyezhetem, hogy a CC1101 ne lenne inicializálva
+    //enableRisingEdgeInterrupt(&CC1101_GD0); // Azelőtt ezt nem engedélyezhetem, hogy a CC1101 ne lenne inicializálva
 
     setOutputLow(&FORWARD);
     
@@ -450,7 +392,65 @@ void driver(){
     unsigned int timerBCounter = 0;
     car.intError = 0;
     TIMER_ON;
+    
+    char speedIsFresh = 0;
+
     while (1){
+        if (RingBuffer_getCharPos(&rxUartBuffer, ',') < rxUartBuffer.bufferSize){
+            char key[50];
+            char value[50];
+            char buffer[50];
+            unsigned int len;
+            
+            len = RingBuffer_getContent(&rxUartBuffer, buffer, 50);
+            buffer[len-1] = 0;
+            separateKeyValuePair(buffer, key, value, ':');
+
+            if (VERBOSE > 0){
+                RingBuffer_putString(&txUartBuffer, "Key: |");
+                RingBuffer_putString(&txUartBuffer, key);
+                RingBuffer_putString(&txUartBuffer, "|      ");
+                RingBuffer_putString(&txUartBuffer, "Value: |");
+                RingBuffer_putString(&txUartBuffer, value);
+                RingBuffer_putString(&txUartBuffer, "|\n\r");            
+            }
+
+            if (!strcmp(key, "setspeedref")){
+                car.speedRef = a2usFixpoint(value, 3);
+            } else if (!strcmp(key, "setspeed")) {
+                car.speed = a2usFixpoint(value, 3);
+                speedIsFresh = 1;
+            } else if (!strcmp(key, "setsteer")) {
+                car.steerRef = atoi(value);
+            } else if (!strcmp(key, "getweights")) {
+                if (USE_NEURON_NOT_PID){
+                    // float ret = car->biasWeight * error + car->speedWeight * car->intError; 
+                    sprintf(buffer, "%d,%d,%d,%d,%d\n\r", (int)(1000*car.biasWeight), 
+                                                        (int)(1000*car.leftSteerWeight), 
+                                                        (int)(1000*car.rightSteerWeight), 
+                                                        (int)(1000*car.speedWeight),
+                                                        (int)(1000*car.speedRefWeight));
+                } else {
+                    sprintf(buffer, "%d,%d\n\r", (int)(1000*car.biasWeight), 
+                                                    (int)(1000*car.speedWeight));
+                }
+                RingBuffer_putString(&txUartBuffer, buffer);
+            } else if (!strcmp(key, "getlabel")) {
+                if (USE_NEURON_NOT_PID){
+                    sprintf(buffer, "bias,leftSteer,rightSteer,speed,speedRef\n\r");
+                } else {
+                    sprintf(buffer, "P,I\n\r");
+                }
+                RingBuffer_putString(&txUartBuffer, buffer);
+            } else if(!strcmp(key, "debug")) {
+                sprintf(buffer, "speed: %d, speedRef: %d, steerRef: %d\n\r", (int)(car.speed), 
+                                                        (int)(car.speedRef), 
+                                                        (int)(car.steerRef));
+                RingBuffer_putString(&txUartBuffer, buffer);
+            }
+        }
+
+
         if (buttonPressed){
             buttonPressed = 0;
         }
@@ -460,71 +460,27 @@ void driver(){
             timerBFlag = 0;
         }
 
-        if (sendAnswer && (timerBCounter>=1000)){
-            char message[30];
-            message[0] = 20;
-            Car_createDriverMessage(&car, message+1);
-            sendPacket(message);
-            setOutputHigh(&GREEN_LED);
-            if (VERBOSE >= 2){
-                RingBuffer_putString(&txUartBuffer, "Car> Resp\n\r");
-            }
-            setOutputHigh(&RED_LED);
-            sendAnswer = 0;
-            timerBCounter = 0;
-        }
+        if (speedIsFresh){
+            Car_updateWeights(&car);
 
-        if (packetReceivedOrSent){
-            char res[2];
-            burstReadRFReg(TI_CC_REG_RXBYTES, res, 1);
-            if (res[0] & TI_CC_REG_NUM_RXBYTES){
-                // Van adat az RX buffer-ben -> ez valószínűleg egy fogadás volt
-                packetReceived = 1;
-            } else {
-                sendingInProgress = 0;
-                packetSent = 1;
-            }
-            packetReceivedOrSent = 0;
-        }
-
-        if (packetSent){
-            setOutputLow(&GREEN_LED);
-            packetSent = 0;
-        }
-
-        if (packetReceived){
-            setOutputLow(&RED_LED);
-            unsigned char buffer[50];
-            buffer[0] = 0;
-            unsigned char len = recPacket(buffer, 10);
-            Car_udpateByControllerMessage(&car, buffer);
+            /*char buffer[50];
+            sprintf(buffer, "speed: %d, speedRef: %d, steerRef: %d\n\r", (int)(1000*car.speed), 
+                                                    (int)(1000*car.speedRef), 
+                                                    (int)(1000*car.steerRef));
+            RingBuffer_putString(&txUartBuffer, buffer);*/
 
             float ratio = Car_getMotorSignal(&car);
 
             if (ratio > 1) ratio = 1.0;
             if (ratio < 0) ratio = 0.0;
             speed = ratio * 100;
-
-            static char printerCounter = 0;
-            if (++printerCounter > 5 && VERBOSE >= 2){
-                sprintf(buffer, "s:%d\n\r", speed);
-                RingBuffer_putString(&txUartBuffer, buffer);
-                printerCounter = 0;
-            }
-
-            sendAnswer = 1;
-            packetReceived = 0; 
+            speedIsFresh = 0; 
         }
     }
 }
 
 int main(){
-    if (DRIVER_CODE){
-        driver();
-    } else {
-        controller();
-    }
-    
+    driver();
 }
 
 __attribute__((interrupt(PORT1_VECTOR)))
@@ -535,18 +491,8 @@ void buttonInterrupt(){
     }
 }
 
-__attribute__((interrupt(PORT2_VECTOR)))
-void CC1101Interrupt(){
-    if (testInterruptFlag(&CC1101_GD0)){
-        packetReceivedOrSent = 1; // Ez bejön küldés után is!!!
-        clearInterruptFlag(&CC1101_GD0);
-    }
-}
-
 __attribute__((interrupt(TIMERB0_VECTOR)))
 void TimerB(void){
-    if (DRIVER_CODE){
-        driverTimerEvent();
-    }
+    driverTimerEvent();
     timerBFlag = 1;
 }
